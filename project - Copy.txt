@@ -1,0 +1,150 @@
+#include <ESP8266WiFi.h>
+String apiKey ="PL0FT6GO69COYVLB";     //  Enter your Write API key from ThingSpeak
+const char *ssid =  "project12";     // replace with your wifi ssid and wpa2 key
+const char *pass =  "project123456";
+const char* server = "api.thingspeak.com";
+
+
+WiFiClient client;
+#include <dht.h>
+#define dht_apin D0 // Analog Pin sensor is connected to
+dht DHT; 
+#include <Wire.h>//i2c communication library 
+#include <LiquidCrystal_I2C.h>//i2c lcd library
+// Set the LCD address to 0x27 for a 16 chars and 2 line display
+LiquidCrystal_I2C lcd(0x27, 16, 2);//adress,coloumns,rows
+
+int zz=0;
+void setup() 
+{
+
+   lcd.begin();
+  lcd.backlight();
+  lcd.setCursor(0,0);
+  lcd.print("SMART");
+ lcd.setCursor(0,1);
+ lcd.print("IRRIGATION");
+
+       pinMode(D3,INPUT);
+       
+      
+       
+       pinMode(D5,OUTPUT);
+      
+       digitalWrite(D5,LOW);
+
+       Serial.begin(9600);
+       delay(100);
+       Serial.println("Connecting to ");
+       Serial.println(ssid);
+       WiFi.begin(ssid, pass);
+      while (WiFi.status() != WL_CONNECTED) 
+     {
+            delay(500);
+            Serial.print(".");
+     }
+      Serial.println("");
+      Serial.println("WiFi connected");
+ //     Serial.println("AT+CIFSR\r\n");
+      delay(1000);
+
+}
+ 
+void loop() 
+{
+  DHT.read11(dht_apin);
+    int t=DHT.temperature;
+     int h=DHT.humidity; 
+      int a=digitalRead(D3);
+       int b=analogRead(A0);
+       Serial.println(b);
+       if(a==0)
+       {
+        a=1;
+       }
+       else
+       {
+        a=0;
+       }
+       if(b>300)
+       {
+        b=1;
+       }
+       else
+       {
+        b=0;
+       }
+  int c=0;
+    if(b==1 && a==0)
+    {
+       digitalWrite(D5,HIGH);
+       c=1;
+    }
+    else
+    {
+       digitalWrite(D5,LOW);
+       c=0;
+    }
+
+    delay(1000);
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.print("T:");
+    if(t>45)
+    {
+      lcd.print("1 ");
+    }
+    else
+    {
+      lcd.print("0 ");
+    }
+    lcd.print("H:");
+    if(h>45)
+    {
+      lcd.print("1 ");
+    }
+    else
+    {
+      lcd.print("0 ");
+    }
+    lcd.setCursor(0,1);
+    lcd.print("S:");
+    lcd.print(a);
+     lcd.print(" W:");
+    lcd.print(b);
+ 
+                if (client.connect(server,80))   //   "184.106.153.149" or api.thingspeak.com
+                      {  
+                            
+                             String postStr = apiKey;
+                             postStr +="&field1=";
+                             postStr += String(t);
+                             postStr +="&field2=";
+                             postStr += String(h);
+                             postStr +="&field3=";
+                             postStr += String(a);
+                             postStr +="&field4=";
+                             postStr += String(b);
+                             postStr +="&field5=";
+                             postStr += String(c);
+                            
+                             postStr += "\r\n\r\n";
+ 
+                             client.print("POST /update HTTP/1.1\n");
+                             client.print("Host: api.thingspeak.com\n");
+                             client.print("Connection: close\n");
+                             client.print("X-THINGSPEAKAPIKEY: "+apiKey+"\n");
+                             client.print("Content-Type: application/x-www-form-urlencoded\n");
+                             client.print("Content-Length: ");
+                             client.print(postStr.length());
+                             client.print("\n\n");
+                             client.print(postStr);
+ 
+                            
+                      //       Serial.println("%. Send to Thingspeak.");
+                        }
+                        delay(10000);
+          client.stop();
+          delay(1500);
+ 
+}
